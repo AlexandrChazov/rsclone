@@ -1,0 +1,22 @@
+{
+  "name": "dino_run",
+  "version": "1.0.0",
+  "description": "rsclone",
+  "main": "game.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/FireYourGuns/rsclone.git"
+  },
+  "author": "Alexandr Chazov",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/FireYourGuns/rsclone/issues"
+  },
+  "homepage": "https://github.com/FireYourGuns/rsclone#readme",
+  "dependencies": {
+    "phaser": "^3.52.0"
+  }
+}
