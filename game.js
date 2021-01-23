@@ -84,23 +84,28 @@ class preloadGame extends Phaser.Scene{
         frameHeight: 93
       });
 
-        // the coin is a sprite sheet made by 20x20 pixels
-        this.load.spritesheet("coin", "coin.png", {
-            frameWidth: 20,
-            frameHeight: 20
-        });
+      this.load.spritesheet("fall", "dino_fall.png", {
+        frameWidth: 110,
+        frameHeight: 102
+      });
 
-        // the firecamp is a sprite sheet made by 32x58 pixels
-        this.load.spritesheet("fire", "fire.png", {
-            frameWidth: 40,
-            frameHeight: 70
-        });
+      // the coin is a sprite sheet made by 20x20 pixels
+      this.load.spritesheet("coin", "coin.png", {
+          frameWidth: 20,
+          frameHeight: 20
+      });
 
-        // mountains are a sprite sheet made by 512x512 pixels
-        this.load.spritesheet("mountain", "mountain.png", {
-            frameWidth: 512,
-            frameHeight: 512
-        });
+      // the firecamp is a sprite sheet made by 32x58 pixels
+      this.load.spritesheet("fire", "fire.png", {
+          frameWidth: 40,
+          frameHeight: 70
+      });
+
+      // mountains are a sprite sheet made by 512x512 pixels
+      this.load.spritesheet("mountain", "mountain.png", {
+          frameWidth: 512,
+          frameHeight: 512
+      });
     }
     create(){
 
@@ -119,9 +124,19 @@ class preloadGame extends Phaser.Scene{
           key: "jump",
             frames: this.anims.generateFrameNumbers("jump", {
                 start: 0,
-                end: 15
+                end: 12
             }),
             frameRate: 20,
+            repeat: 0
+        })
+
+        this.anims.create({
+          key: "fall",
+            frames: this.anims.generateFrameNumbers("fall", {
+                start: 0,
+                end: 5
+            }),
+            frameRate: 10,
             repeat: 0
         })
 
@@ -142,7 +157,7 @@ class preloadGame extends Phaser.Scene{
             key: "burn",
             frames: this.anims.generateFrameNumbers("fire", {
                 start: 0,
-                end: 4
+                end: 3
             }),
             frameRate: 15,
             repeat: -1
@@ -165,10 +180,10 @@ class playGame extends Phaser.Scene{
         // group with all active platforms.
         this.platformGroup = this.add.group({
 
-            // once a platform is removed, it's added to the pool
-            removeCallback: function(platform){
-                platform.scene.platformPool.add(platform)
-            }
+          // once a platform is removed, it's added to the pool
+          removeCallback: function(platform){
+              platform.scene.platformPool.add(platform)
+          }
         });
 
         // platform pool
@@ -269,8 +284,9 @@ class playGame extends Phaser.Scene{
 
             this.dying = true;
             this.player.anims.stop();
-            this.player.setFrame(2);
-            this.player.body.setVelocityY(-200);
+            // this.player.setFrame(2);
+            this.player.anims.play("fall");
+            this.player.body.setVelocityY(-50);
             this.physics.world.removeCollider(this.platformCollider);
 
         }, null, this);
