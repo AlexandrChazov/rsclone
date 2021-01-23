@@ -4,7 +4,7 @@ let game;
 let gameOptions = {
 
     // platform speed range, in pixels per second
-    platformSpeedRange: [300, 400],
+    platformSpeedRange: [300, 300],
 
     // spawn range, how far should be the rightmost platform from the right edge
     // before next platform spawns, in pixels
@@ -14,10 +14,10 @@ let gameOptions = {
     platformSizeRange: [90, 300],
 
     // a height range between rightmost platform and next platform to be spawned
-    platformHeightRange: [-10, 10],
+    platformHeightRange: [-5, 5],
 
     // a scale to be multiplied by platformHeightRange
-    platformHeighScale: 10,
+    platformHeighScale: 20,
 
     // platform max and min height, as screen height ratio
     platformVerticalLimit: [0.4, 0.8],
@@ -42,7 +42,7 @@ window.onload = function() {
         type: Phaser.AUTO,
         width: 1334,
         height: 750,
-        scene: playGame,
+        scene: [preloadGame, playGame],
         backgroundColor: 0x87CEEB,
 
         // physics settings
@@ -56,26 +56,79 @@ window.onload = function() {
     window.addEventListener("resize", resize, false);
 }
 
+// preloadGame scene
+class preloadGame extends Phaser.Scene{
+  constructor(){
+      super("PreloadGame");
+  }
+  preload(){
+      this.load.image("platform", "platform.png");
+
+      // player is a sprite sheet made by 24x48 pixels
+      this.load.spritesheet("player", "dino.png", {
+          frameWidth: 100,
+          frameHeight: 93
+      });
+
+      this.load.spritesheet("jump", "dino_jump.png", {
+        frameWidth: 100,
+        frameHeight: 93
+      });
+
+      // the coin is a sprite sheet made by 20x20 pixels
+      this.load.spritesheet("coin", "coin.png", {
+          frameWidth: 20,
+          frameHeight: 20
+      });
+  }
+  create(){
+
+      // setting player animation
+      this.anims.create({
+          key: "run",
+          frames: this.anims.generateFrameNumbers("player", {
+              start: 0,
+              end: 8
+          }),
+          frameRate: 16,
+          repeat: -1
+      });
+
+      this.anims.create({
+        key: "jump",
+          frames: this.anims.generateFrameNumbers("jump", {
+              start: 0,
+              end: 15
+          }),
+          frameRate: 20,
+          repeat: 0
+      })
+
+      // setting coin animation
+      this.anims.create({
+          key: "rotate",
+          frames: this.anims.generateFrameNumbers("coin", {
+              start: 0,
+              end: 5
+          }),
+          frameRate: 15,
+          yoyo: true,
+          repeat: -1
+      });
+
+      this.scene.start("PlayGame");
+  }
+}
+
 // playGame scene
 class playGame extends Phaser.Scene{
     constructor(){
         super("PlayGame");
     }
-    preload(){
-        this.load.image("platform", "platform.png");
-
-        // player is a sprite sheet made by 24x48 pixels
-        this.load.spritesheet("player", "dino.png", {
-            frameWidth: 100,
-            frameHeight: 93
-        });
-
-        this.load.spritesheet("jump", "dino_jump.png", {
-            frameWidth: 100,
-            frameHeight: 93
-        });
-    }
     create(){
+
+        // keeping track of added platforms
+        this.addedPlatforms = 0;
 
         // group with all active platforms.
         this.platformGroup = this.add.group({
@@ -95,6 +148,24 @@ class playGame extends Phaser.Scene{
             }
         });
 
+        // group with all active coins.
+        this.coinGroup = this.add.group({
+
+          // once a coin is removed, it's added to the pool
+          removeCallback: function(coin){
+              coin.scene.coinPool.add(coin)
+          }
+        });
+
+        // coin pool
+        this.coinPool = this.add.group({
+
+            // once a coin is removed from the pool, it's added to the active coins group
+            removeCallback: function(coin){
+                coin.scene.coinGroup.add(coin)
+            }
+        });
+
         // number of consecutive jumps made by the player
         this.playerJumps = 0;
 
@@ -104,27 +175,6 @@ class playGame extends Phaser.Scene{
         // adding the player;
         this.player = this.physics.add.sprite(gameOptions.playerStartPosition, game.config.height * 0.7, "player");
         this.player.setGravityY(gameOptions.playerGravity);
-
-        // setting player animation
-        this.anims.create({
-            key: "run",
-            frames: this.anims.generateFrameNumbers("player", {
-                start: 0,
-                end: 8
-            }),
-            frameRate: 16,
-            repeat: -1
-        });
-
-        this.anims.create({
-          key: "jump",
-            frames: this.anims.generateFrameNumbers("jump", {
-                start: 0,
-                end: 15
-            }),
-            frameRate: 16,
-            repeat: 0
-        })
 
         // setting collisions between the player and the platform group
         this.physics.add.collider(this.player, this.platformGroup, function(){
@@ -136,28 +186,71 @@ class playGame extends Phaser.Scene{
             }
         }, null, this);
 
+        // setting collisions between the player and the coin group
+        this.physics.add.overlap(this.player, this.coinGroup, function(player, coin){
+          this.tweens.add({
+              targets: coin,
+              y: coin.y - 100,
+              alpha: 0,
+              duration: 800,
+              ease: "Cubic.easeOut",
+              callbackScope: this,
+              onComplete: function(){
+                  this.coinGroup.killAndHide(coin);
+                  this.coinGroup.remove(coin);
+              }
+          });
+      }, null, this);
+
         // checking for input
         this.input.on("pointerdown", this.jump, this);
     }
 
     // the core of the script: platform are added from the pool or created on the fly
     addPlatform(platformWidth, posX, posY){
+        this.addedPlatforms ++;
         let platform;
         if(this.platformPool.getLength()){
             platform = this.platformPool.getFirst();
             platform.x = posX;
+            platform.y = posY;
             platform.active = true;
             platform.visible = true;
             this.platformPool.remove(platform);
+            let newRatio =  platformWidth / platform.displayWidth;
+            platform.displayWidth = platformWidth;
+            platform.tileScaleX = 1 / platform.scaleX;
         }
         else{
-            platform = this.physics.add.sprite(posX, posY, "platform");
+            platform = this.add.tileSprite(posX, posY, platformWidth, 32, "platform");
+            this.physics.add.existing(platform);
             platform.setImmovable(true);
             platform.setVelocityX(Phaser.Math.Between(gameOptions.platformSpeedRange[0], gameOptions.platformSpeedRange[1]) * -1);
             this.platformGroup.add(platform);
         }
-        platform.displayWidth = platformWidth;
         this.nextPlatformDistance = Phaser.Math.Between(gameOptions.spawnRange[0], gameOptions.spawnRange[1]);
+
+        // is there a coin over the platform?
+        if(this.addedPlatforms > 1){
+          if(Phaser.Math.Between(1, 100) <= gameOptions.coinPercent){
+              if(this.coinPool.getLength()){
+                  let coin = this.coinPool.getFirst();
+                  coin.x = posX;
+                  coin.y = posY - 96;
+                  coin.alpha = 1;
+                  coin.active = true;
+                  coin.visible = true;
+                  this.coinPool.remove(coin);
+              }
+              else{
+                  let coin = this.physics.add.sprite(posX, posY - 96, "coin");
+                  coin.setImmovable(true);
+                  coin.setVelocityX(platform.body.velocity.x);
+                  coin.anims.play("rotate");
+                  this.coinGroup.add(coin);
+              }
+          }
+      }
     }
 
     // the player jumps when on the ground, or once in the air as long as there are jumps left and the first jump was on the ground
@@ -194,6 +287,14 @@ class playGame extends Phaser.Scene{
             if(platform.x < - platform.displayWidth / 2){
                 this.platformGroup.killAndHide(platform);
                 this.platformGroup.remove(platform);
+            }
+        }, this);
+
+        // recycling coins
+        this.coinGroup.getChildren().forEach(function(coin){
+            if(coin.x < - coin.displayWidth / 2){
+                this.coinGroup.killAndHide(coin);
+                this.coinGroup.remove(coin);
             }
         }, this);
 
