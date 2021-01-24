@@ -70,6 +70,7 @@ class preloadGame extends Phaser.Scene{
     constructor(){
         super("PreloadGame");
     }
+
     preload(){
         this.load.image("platform", "platform.png");
 
@@ -172,7 +173,23 @@ class playGame extends Phaser.Scene{
     constructor(){
         super("PlayGame");
     }
+
+
+    init(){
+      // game variables
+      this.score = 0;
+      this.lives = 3;
+      // this.speed= 1.5;
+      // this.dragon_move = 1;
+      // this.score_text;
+      // this.lives_text;
+    };
+
     create(){
+
+        // add score text & game text to screen
+        this.scoreText = this.add.text(30, 30, 'score: '+this.score, { fontSize: '32px', fill: '#000000' });
+        this.liveText = this.add.text(30, this.sys.game.config.height-680, 'lives: ' + this.lives, {fontSize: '32px', fill: '#000'});
 
         // group with all active mountains.
         this.mountainGroup = this.add.group();
@@ -264,18 +281,22 @@ class playGame extends Phaser.Scene{
         // setting collisions between the player and the coin group
         this.physics.add.overlap(this.player, this.coinGroup, function(player, coin){
 
-            this.tweens.add({
-                targets: coin,
-                y: coin.y - 100,
-                alpha: 0,
-                duration: 800,
-                ease: "Cubic.easeOut",
-                callbackScope: this,
-                onComplete: function(){
-                    this.coinGroup.killAndHide(coin);
-                    this.coinGroup.remove(coin);
-                }
-            });
+          this.score++;
+          this.scoreText.setText("score: " + this.score);
+          // this.end();
+
+          this.tweens.add({
+            targets: coin,
+            y: coin.y - 100,
+            alpha: 0,
+            duration: 800,
+            ease: "Cubic.easeOut",
+            callbackScope: this,
+            onComplete: function(){
+              this.coinGroup.killAndHide(coin);
+              this.coinGroup.remove(coin);
+            }
+          });
 
         }, null, this);
 
